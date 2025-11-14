@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import classNames from "classnames";
-import { CommentData } from "../types/Comment";
+import { Comment, CommentData } from "../types/Comment";
 import { FormNotification } from "../enums/FormNotification";
 
 interface Props {
-  onAddComment: (newComment: CommentData) => Promise<void>;
+  onAddComment: (newComment: CommentData) => Promise<Comment>;
 }
 
 export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
@@ -34,19 +34,23 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
     setErrorEmail(FormNotification.Initial);
     setErrorBody(FormNotification.Initial);
 
+    const trimmedName = name.trim();
+    const trimmedEmail = email.trim();
+    const trimmedBody = body.trim();
+
     let isValidForm = true;
 
-    if (!name) {
+    if (!trimmedName) {
       setErrorName(FormNotification.RequiredName);
       isValidForm = false;
     }
 
-    if (!email) {
+    if (!trimmedEmail) {
       setErrorEmail(FormNotification.RequiredEmail);
       isValidForm = false;
     }
 
-    if (!body) {
+    if (!trimmedBody) {
       setErrorBody(FormNotification.RequiredBody);
       isValidForm = false;
     }
@@ -55,7 +59,11 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
       return;
     }
 
-    const newComment: CommentData = { name, email, body };
+    const newComment: CommentData = {
+      name: trimmedName,
+      email: trimmedEmail,
+      body: trimmedBody,
+    };
 
     setIsLoading(true);
 

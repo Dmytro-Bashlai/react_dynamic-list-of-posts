@@ -60,7 +60,7 @@ export const App = () => {
 
   useEffect(() => {
     if (selectedPost) {
-      setNotification(Notification.Initial);
+      setCommentsNotification(Notification.Initial);
       setCommentsLoading(true);
 
       client
@@ -100,19 +100,24 @@ export const App = () => {
   }
 
   function deleteComment(commentId: number) {
-    return client.delete(`/comments/${commentId}`).then(() => {
-      setComments((currentComments) => {
-        const filteredComments = currentComments.filter(
-          (comment: Comment) => comment.id !== commentId,
-        );
+    const filteredComments = comments.filter(
+      (comment: Comment) => comment.id !== commentId,
+    );
 
-        if (filteredComments.length === 0) {
-          setCommentsNotification(Notification.WarningComments);
-        }
+    if (filteredComments.length === 0) {
+      setCommentsNotification(Notification.WarningComments);
+    } else {
+      setComments(filteredComments);
+    }
 
-        return filteredComments;
+    return client
+      .delete(`/comments/${commentId}`)
+      .then(() => {
+        setComments(filteredComments);
+      })
+      .catch(() => {
+        setCommentsNotification(Notification.LoadingError);
       });
-    });
   }
 
   return (
