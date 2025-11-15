@@ -100,14 +100,16 @@ export const App = () => {
   }
 
   function deleteComment(commentId: number) {
+    setCommentsNotification(Notification.Initial);
+    const prevComments = comments;
     const filteredComments = comments.filter(
-      (comment: Comment) => comment.id !== commentId,
+      (comment) => comment.id !== commentId,
     );
 
-    if (filteredComments.length === 0) {
-      setCommentsNotification(Notification.WarningComments);
-    } else {
+    if (filteredComments.length > 0) {
       setComments(filteredComments);
+    } else {
+      setCommentsNotification(Notification.WarningComments);
     }
 
     return client
@@ -116,6 +118,7 @@ export const App = () => {
         setComments(filteredComments);
       })
       .catch(() => {
+        setComments(prevComments);
         setCommentsNotification(Notification.LoadingError);
       });
   }
