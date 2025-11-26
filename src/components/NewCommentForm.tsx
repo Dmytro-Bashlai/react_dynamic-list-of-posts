@@ -1,57 +1,41 @@
-import React, { useState } from "react";
 import classNames from "classnames";
-import { Comment, CommentData } from "../types/Comment";
+import { CommentData } from "../types/Comment";
+import React, { useContext } from "react";
 import { FormNotification } from "../enums/FormNotification";
+import { CommentContext } from "../App";
 
-interface Props {
-  onAddComment: (newComment: CommentData) => Promise<Comment>;
-}
-
-export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
-  const [name, setName] = useState("");
-  const [errorName, setErrorName] = useState(FormNotification.Initial);
-
-  const [email, setEmail] = useState("");
-  const [errorEmail, setErrorEmail] = useState(FormNotification.Initial);
-
-  const [body, setBody] = useState("");
-  const [errorBody, setErrorBody] = useState(FormNotification.Initial);
-
-  const [isLoading, setIsLoading] = useState(false);
+export const NewCommentForm: React.FC = () => {
+  const { comment, dispatch, onAddComment } = useContext(CommentContext);
 
   function handleClear() {
-    setName("");
-    setErrorName(FormNotification.Initial);
-    setEmail("");
-    setErrorEmail(FormNotification.Initial);
-    setBody("");
-    setErrorBody(FormNotification.Initial);
+    dispatch({ type: "clear" });
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setErrorName(FormNotification.Initial);
-    setErrorEmail(FormNotification.Initial);
-    setErrorBody(FormNotification.Initial);
+    dispatch({ type: "error_reset" });
 
-    const trimmedName = name.trim();
-    const trimmedEmail = email.trim();
-    const trimmedBody = body.trim();
+    const trimmedName = comment.name.trim();
+    const trimmedEmail = comment.email.trim();
+    const trimmedBody = comment.body.trim();
 
     let isValidForm = true;
 
     if (!trimmedName) {
-      setErrorName(FormNotification.RequiredName);
+      dispatch({ type: "empty_name" });
+
       isValidForm = false;
     }
 
     if (!trimmedEmail) {
-      setErrorEmail(FormNotification.RequiredEmail);
+      dispatch({ type: "empty_email" });
+
       isValidForm = false;
     }
 
     if (!trimmedBody) {
-      setErrorBody(FormNotification.RequiredBody);
+      dispatch({ type: "empty_body" });
+
       isValidForm = false;
     }
 
@@ -65,11 +49,11 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
       body: trimmedBody,
     };
 
-    setIsLoading(true);
+    dispatch({ type: "isLoading", loading: true });
 
     onAddComment(newComment)
-      .then(() => setBody(""))
-      .finally(() => setIsLoading(false));
+      .then(() => dispatch({ type: "comment_added" }))
+      .finally(() => dispatch({ type: "isLoading", loading: false }));
   }
 
   return (
@@ -85,19 +69,18 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
             name="name"
             id="comment-author-name"
             placeholder="Name Surname"
-            value={name}
-            className={classNames("input", { "is-danger": errorName })}
-            onChange={(e) => {
-              setName(e.target.value);
-              setErrorName(FormNotification.Initial);
-            }}
+            value={comment.name}
+            className={classNames("input", { "is-danger": comment.errorName })}
+            onChange={(e) =>
+              dispatch({ type: "changed_name", name: e.target.value })
+            }
           />
 
           <span className="icon is-small is-left">
             <i className="fas fa-user" />
           </span>
 
-          {errorName && (
+          {comment.errorName && (
             <span
               className="icon is-small is-right has-text-danger"
               data-cy="ErrorIcon"
@@ -107,7 +90,7 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
           )}
         </div>
 
-        {errorName && (
+        {comment.errorName && (
           <p className="help is-danger" data-cy="ErrorMessage">
             {FormNotification.RequiredName}
           </p>
@@ -125,19 +108,18 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
             name="email"
             id="comment-author-email"
             placeholder="email@test.com"
-            value={email}
-            className={classNames("input", { "is-danger": errorEmail })}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setErrorEmail(FormNotification.Initial);
-            }}
+            value={comment.email}
+            className={classNames("input", { "is-danger": comment.errorEmail })}
+            onChange={(e) =>
+              dispatch({ type: "changed_email", email: e.target.value })
+            }
           />
 
           <span className="icon is-small is-left">
             <i className="fas fa-envelope" />
           </span>
 
-          {errorEmail && (
+          {comment.errorEmail && (
             <span
               className="icon is-small is-right has-text-danger"
               data-cy="ErrorIcon"
@@ -147,7 +129,7 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
           )}
         </div>
 
-        {errorEmail && (
+        {comment.errorEmail && (
           <p className="help is-danger" data-cy="ErrorMessage">
             {FormNotification.RequiredEmail}
           </p>
@@ -164,18 +146,19 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
             id="comment-body"
             name="body"
             placeholder="Type comment here"
-            value={body}
-            className={classNames("textarea", { "is-danger": errorBody })}
-            onChange={(e) => {
-              setBody(e.target.value);
-              setErrorBody(FormNotification.Initial);
-            }}
+            value={comment.body}
+            className={classNames("textarea", {
+              "is-danger": comment.errorBody,
+            })}
+            onChange={(e) =>
+              dispatch({ type: "changed_body", body: e.target.value })
+            }
           />
         </div>
 
-        {errorBody && (
+        {comment.errorBody && (
           <p className="help is-danger" data-cy="ErrorMessage">
-            {FormNotification.RequiredBody}
+            {FormNotification.RequiredText}
           </p>
         )}
       </div>
@@ -185,7 +168,7 @@ export const NewCommentForm: React.FC<Props> = ({ onAddComment }) => {
           <button
             type="submit"
             className={classNames("button is-link", {
-              "is-loading": isLoading,
+              "is-loading": comment.loading,
             })}
           >
             Add

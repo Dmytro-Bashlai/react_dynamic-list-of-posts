@@ -1,4 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useReducer,
+  createContext,
+  useEffect,
+  useState,
+  useCallback,
+} from "react";
 import classNames from "classnames";
 
 import "bulma/css/bulma.css";
@@ -15,6 +21,90 @@ import { User } from "./types/User";
 import { Post } from "./types/Post";
 import { Comment, CommentData } from "./types/Comment";
 import { Notification } from "./enums/Notification";
+import { FormNotification } from "./enums/FormNotification";
+import { Action } from "./types/Action";
+import { CommentContextValue } from "./types/CommentContextValue";
+
+const INITIAL_STATE: Comment = {
+  name: "",
+  errorName: FormNotification.Initial,
+  email: "",
+  errorEmail: FormNotification.Initial,
+  body: "",
+  errorBody: FormNotification.Initial,
+  loading: false,
+  id: 0,
+  postId: 0,
+};
+
+const defaultContextValue: CommentContextValue = {
+  comment: INITIAL_STATE,
+  dispatch: () => {},
+  onAddComment: () => Promise.reject(new Error("Context not initialized")),
+};
+
+export const CommentContext =
+  createContext<CommentContextValue>(defaultContextValue);
+
+function commentReducer(state: Comment, action: Action) {
+  switch (action.type) {
+    case "clear":
+      return INITIAL_STATE;
+    case "error_reset":
+      return {
+        ...state,
+        errorName: FormNotification.Initial,
+        errorEmail: FormNotification.Initial,
+        errorBody: FormNotification.Initial,
+      };
+    case "empty_name":
+      return {
+        ...state,
+        errorName: FormNotification.RequiredName,
+      };
+    case "empty_email":
+      return {
+        ...state,
+        errorEmail: FormNotification.RequiredEmail,
+      };
+    case "empty_body":
+      return {
+        ...state,
+        errorBody: FormNotification.RequiredText,
+      };
+    case "comment_added":
+      return {
+        ...state,
+        body: FormNotification.Initial,
+      };
+    case "isLoading":
+      return {
+        ...state,
+        loading: action.loading,
+      };
+    case "changed_name":
+      return {
+        ...state,
+        name: action.name,
+        errorName: FormNotification.Initial,
+      };
+    case "changed_email":
+      return {
+        ...state,
+        email: action.email,
+        errorEmail: FormNotification.Initial,
+      };
+    case "changed_body":
+      return {
+        ...state,
+        body: action.body,
+        errorBody: FormNotification.Initial,
+      };
+
+    default:
+      return state;
+  }
+}
 
 export const App = () => {
   const [users, setUsers] = useState<User[] | []>([]);
@@ -31,6 +121,8 @@ export const App = () => {
   const [commentsNotification, setCommentsNotification] = useState(
     Notification.Initial,
   );
+
+  const [comment, dispatch] = useReducer(commentReducer, INITIAL_STATE);
 
   useEffect(() => {
     client.get<User[]>("/users").then(setUsers);
@@ -80,31 +172,32 @@ export const App = () => {
     }
   }, [selectedPost]);
 
-  function addComment(newComment: CommentData) {
-    return client
-      .post<Comment>("/comments", { ...newComment, postId: selectedPost?.id })
-      .then((commentFromServer) => {
-        setComments((currentComments) => [
-          ...currentComments,
-          commentFromServer,
-        ]);
-        setCommentsNotification(Notification.Initial);
+  const addComment = useCallback(
+    (newComment: CommentData) => {
+      return client
+        .post<Comment>("/comments", { ...newComment, postId: selectedPost?.id })
+        .then((commentFromServer) => {
+          setComments((currentComments) => [
+            ...currentComments,
+            commentFromServer,
+          ]);
+          setCommentsNotification(Notification.Initial);
 
-        return commentFromServer;
-      })
-      .catch(() => {
-        setCommentsNotification(Notification.LoadingError);
+          return commentFromServer;
+        })
+        .catch(() => {
+          setCommentsNotification(Notification.LoadingError);
 
-        throw new Error();
-      });
-  }
+          throw new Error();
+        });
+    },
+    [selectedPost],
+  );
 
   function deleteComment(commentId: number) {
     setCommentsNotification(Notification.Initial);
     const prevComments = comments;
-    const filteredComments = comments.filter(
-      (comment) => comment.id !== commentId,
-    );
+    const filteredComments = comments.filter((c) => c.id !== commentId);
 
     if (filteredComments.length > 0) {
       setComments(filteredComments);
@@ -196,16 +289,17 @@ export const App = () => {
           >
             <div className="tile is-child box is-success ">
               {selectedPost && (
-                <PostDetails
-                  selectedPost={selectedPost}
-                  comments={comments}
-                  notification={commentsNotification}
-                  loading={commentsLoading}
-                  onDeleteComment={(commentId) => deleteComment(commentId)}
-                  onAddComment={(newComment: CommentData) =>
-                    addComment(newComment)
-                  }
-                />
+                <CommentContext.Provider
+                  value={{ comment, dispatch, onAddComment: addComment }}
+                >
+                  <PostDetails
+                    selectedPost={selectedPost}
+                    comments={comments}
+                    notification={commentsNotification}
+                    loading={commentsLoading}
+                    onDeleteComment={(commentId) => deleteComment(commentId)}
+                  />
+                </CommentContext.Provider>
               )}
             </div>
           </div>
